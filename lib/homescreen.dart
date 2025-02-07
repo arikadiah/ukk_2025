@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-//import 'flutterViz_bottom_navigationBar_model.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -9,6 +9,73 @@ class HomeScreen extends StatelessWidget {
 }
  
 class _HomeScreenState extends State<HomeScreen> {
+  int _currentIndex = 0;
+  List<Map<String, dynamic>> users = [];
+
+  @override
+  void initState() {
+    super.initState();
+    fetchUser();
+  }
+
+  Future<void> fetchUser() async {
+    try {
+      final response = await Supabase.instance.client.from('user').select();
+      setState(() {
+        users = List<Map<String, dynamic>>.from(response);
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Failed to Load users: $e')),
+      );
+    }
+  }
+
+  Future<void> addUser(int id, String username, String password) async {
+    try {
+      await Supabase.instance.client.from('user').insert({
+        'username' : username
+        'password' : password
+      });
+      fetchUser();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('User added successfully')),
+        );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Error adding user : $e'))
+        );
+    }
+  }
+
+  Future<void> editUser(int id, String username, String password) async {
+    try {
+      await Supabase.instance.client
+      .from('user')
+      .update({
+        'id' : id
+        'username' : username
+        'password' : password
+    })
+    .eq('id', id);
+
+    fetchUser();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('User updated successfully!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Error updating user: $e')),
+        );
+    }
+  }
+
+  Future<void> deleteUser(int id) async {
+    
+  } 
+  }
+
+  
 
   @override
   Widget build(BuildContext context) {
