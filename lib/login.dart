@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'homescreen.dart'; // Pastikan HomeScreen sudah didefinisikan dengan benar
+import 'homescreen.dart'; // Pastikan HomeScreen sudah benar
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,9 +13,9 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
 
-  // Dummy data
+  // Dummy data untuk login
   final Map<String, String> dummyData = {
-    'diah_arika' : '1234',
+    'diah_arika': '1234',
   };
 
   @override
@@ -30,76 +30,21 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = _passwordController.text.trim();
 
     if (dummyData.containsKey(username) && dummyData[username] == password) {
-      // Login successful, navigate to HomeScreen with username and password
+      // Navigasi ke HomeScreen
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => HomeScreen(
-            username: username, // Pass username
-            password: password, // Pass password
-          ),
+          builder: (context) => const HomeScreen(), // Pastikan HomeScreen sudah benar
         ),
       );
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Login Successful')),
       );
     } else {
-      // Login failed
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Invalid Username or Password')),
       );
     }
-  }
-
-  // Show Forgot Password dialog
-  void _showForgotPasswordDialog() {
-    final TextEditingController emailController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Forgot Password'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Please enter your email address to reset your password.'),
-              TextField(
-                controller: emailController,
-                decoration: const InputDecoration(
-                  hintText: 'Email Address',
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                String email = emailController.text.trim();
-                if (email.isNotEmpty) {
-                  // Simulate sending password reset email
-                  Navigator.of(context).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Password reset link sent!')),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please enter a valid email address.')),
-                  );
-                }
-              },
-              child: const Text('Submit'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
-              },
-              child: const Text('Cancel'),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   @override
@@ -134,7 +79,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       color: Color(0xff212435),
                       size: 80,
                     ),
-                    const SizedBox(height: 10), // Spasi antara ikon dan teks
+                    const SizedBox(height: 10),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -168,7 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           borderSide: BorderSide.none,
                         ),
                         suffixIcon: const Icon(
-                          Icons.edit,
+                          Icons.person,
                           color: Color(0xff212435),
                         ),
                       ),

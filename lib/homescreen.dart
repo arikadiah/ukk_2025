@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'login.dart';
+import 'product.dart';
 
-class HomeScreen extends StatelessWidget {
+
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
 }
- 
+
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   List<Map<String, dynamic>> users = [];
+   final List<Widget> _pages = [
+    ProductScreen(),
+   ];
 
   @override
   void initState() {
@@ -18,325 +24,257 @@ class _HomeScreenState extends State<HomeScreen> {
     fetchUser();
   }
 
+  // Mengambil data user dari Supabase
   Future<void> fetchUser() async {
     try {
       final response = await Supabase.instance.client.from('user').select();
-      setState(() {
-        users = List<Map<String, dynamic>>.from(response);
-      });
+      if (mounted) {
+        setState(() {
+          users = List<Map<String, dynamic>>.from(response);
+        });
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Failed to Load users: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load users: $e')),
+        );
+      }
     }
   }
 
-  Future<void> addUser(int id, String username, String password) async {
+  // Menambahkan user baru
+  Future<void> addUser(String username, String password) async {
+    if (username.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Username & password cannot be empty')),
+      );
+      return;
+    }
+
     try {
       await Supabase.instance.client.from('user').insert({
-        'username' : username
-        'password' : password
+        'username': username,
+        'password': password,
       });
       fetchUser();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('User added successfully')),
-        );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Error adding user : $e'))
-        );
-    }
-  }
-
-  Future<void> editUser(int id, String username, String password) async {
-    try {
-      await Supabase.instance.client
-      .from('user')
-      .update({
-        'id' : id
-        'username' : username
-        'password' : password
-    })
-    .eq('id', id);
-
-    fetchUser();
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('User updated successfully!')),
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User added successfully!')),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Error updating user: $e')),
-        );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error adding user: $e')),
+      );
     }
   }
 
+  // Menghapus user
   Future<void> deleteUser(int id) async {
-    
-  } 
+    try {
+      await Supabase.instance.client.from('user').delete().eq('id', id);
+      fetchUser();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User deleted successfully!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error deleting user: $e')),
+      );
+    }
   }
 
-  
+  // Menampilkan dialog untuk menambahkan atau mengedit user
+  void _showUserDialog({Map<String, dynamic>? user}) {
+    final TextEditingController usernameController = TextEditingController(
+      text: user?['username'] ?? '',
+    );
+    final TextEditingController passwordController = TextEditingController(
+      text: user?['password'] ?? '',
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(user == null ? "Add User" : "Edit User"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: usernameController,
+              decoration: const InputDecoration(
+                labelText: "Username",
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.person),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: passwordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: "Password",
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.lock),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              if (user == null) {
+                addUser(usernameController.text, passwordController.text);
+              } else {
+                editUser(user['id'], usernameController.text,
+                    passwordController.text);
+              }
+              Navigator.pop(context);
+            },
+            child: Text(user == null ? "Add" : "Save"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Mengedit user
+  Future<void> editUser(int id, String username, String password) async {
+    try {
+      await Supabase.instance.client.from('user').update({
+        'username': username,
+        'password': password,
+      }).eq('id', id);
+      fetchUser();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User updated successfully!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error updating user: $e')),
+      );
+    }
+  }
+
+  // Logout
+  Future<void> logout() async {
+    try {
+      await Supabase.instance.client.auth.signOut();
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Logout failed: $e')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xffe2e5e7),
+      backgroundColor: const Color(0xffe2e5e7),
+      appBar: AppBar(
+        title: Row(
+          children: [
+            Text(
+              "KASIR",
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 22,
+                color: Colors.white,
+              ),
+            ),
+            Text(
+              "QU",
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 22,
+                color: Color(0xfffba808),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.logout),
+            onPressed: logout,
+          ),
+        ],
+        backgroundColor: const Color(0xff3a57e8),
+      ),
       bottomNavigationBar: BottomNavigationBar(
-        // currentIndex: _currentIndex,
+        currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,
-        // onTap: (index) => setState(() => _currentIndex = index),
+        onTap: (index) => setState(() => _currentIndex = index),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Customer'),
-          BottomNavigationBarItem(icon: Icon(Icons.payment), label: 'Transaction'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Product'),
+          BottomNavigationBarItem(icon: Icon(Icons.payment), label: 'Customer'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.app_registration), label: 'Payment'),
           BottomNavigationBarItem(icon: Icon(Icons.history), label: 'History'),
-          BottomNavigationBarItem(icon: Icon(Icons.app_registration), label: 'Registration'),
         ],
         selectedItemColor: Colors.blue,
       ),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisSize: MainAxisSize.max,
-        children: [
-          SingleChildScrollView(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.max,
-              children: [
-                Stack(
-                  alignment: Alignment.topLeft,
-                  children: [
-                    Container(
-                      margin: EdgeInsets.all(0),
-                      padding: EdgeInsets.all(0),
-                      width: MediaQuery.of(context).size.width,
-                      height: MediaQuery.of(context).size.height * 0.25,
-                      decoration: BoxDecoration(
-                        color: Color(0xff3a57e8),
-                        shape: BoxShape.rectangle,
-                        borderRadius: BorderRadius.zero,
-                        border: Border.all(color: Color(0x4d9e9e9e), width: 1),
-                      ),
-                    ),
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.max,
-                      children: [
-                        Padding(
-                          padding: EdgeInsets.fromLTRB(16, 24, 16, 8),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.max,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.start,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.max,
-                                children: [
-                                  Text(
-                                    "KASIR",
-                                    textAlign: TextAlign.start,
-                                    overflow: TextOverflow.clip,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontStyle: FontStyle.normal,
-                                      fontSize: 22,
-                                      color: Color(0xffffffff),
-                                    ),
-                                  ),
-                                  Text(
-                                    "QU",
-                                    textAlign: TextAlign.start,
-                                    overflow: TextOverflow.clip,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontStyle: FontStyle.normal,
-                                      fontSize: 22,
-                                      color: Color(0xfffba808),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Icon(
-                                Icons.logout,
-                                color: Color(0xffffffff),
-                                size: 20,
-                              ),
-                            ],
-                          ),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.max,
-                            children: [
-                              Icon(
-                                Icons.location_on,
-                                color: Color(0xffffffff),
-                                size: 20,
-                              ),
-                              Padding(
-                                padding: EdgeInsets.fromLTRB(4, 0, 0, 0),
-                                child: Text(
-                                  "Sidomulyo City, Selorejo, Blitar",
-                                  textAlign: TextAlign.start,
-                                  overflow: TextOverflow.clip,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w400,
-                                    fontStyle: FontStyle.normal,
-                                    fontSize: 14,
-                                    color: Color(0xffffffff),
-                                  ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "List User", // Menambahkan teks List User
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            users.isEmpty
+                ? const Center(child: Text("No users available"))
+                : Expanded(
+                    child: ListView.builder(
+                      itemCount: users.length,
+                      itemBuilder: (context, index) {
+                        final user = users[index];
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 8.0),
+                          child: ListTile(
+                            title: Text("ID: ${user['id']}"),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                    "Username: ${user['username']}"), // Menambahkan tampilan password
+                                Text(
+                                    "Password: ${user['password']}"), // Menampilkan ID setelah password
+                              ],
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit,
+                                      color: Colors.blue),
+                                  onPressed: () {
+                                    _showUserDialog(user: user);
+                                  },
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
-                          child: TextField(
-                            controller: TextEditingController(),
-                            obscureText: false,
-                            textAlign: TextAlign.start,
-                            maxLines: 1,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w400,
-                              fontStyle: FontStyle.normal,
-                              fontSize: 14,
-                              color: Color(0xffffffff),
-                            ),
-                            decoration: InputDecoration(
-                              disabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12.0),
-                                borderSide: BorderSide(
-                                    color: Color(0x00ffffff), width: 1),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12.0),
-                                borderSide: BorderSide(
-                                    color: Color(0x00ffffff), width: 1),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12.0),
-                                borderSide: BorderSide(
-                                    color: Color(0x00ffffff), width: 1),
-                              ),
-                              hintText: "Type Something...",
-                              hintStyle: TextStyle(
-                                fontWeight: FontWeight.w400,
-                                fontStyle: FontStyle.normal,
-                                fontSize: 14,
-                                color: Color(0x55ffffff),
-                              ),
-                              filled: true,
-                              fillColor: Color(0xff4c67ee),
-                              isDense: true,
-                              contentPadding: EdgeInsets.symmetric(
-                                  vertical: 8, horizontal: 12),
-                              prefixIcon: Icon(Icons.search,
-                                  color: Color(0x55ffffff), size: 20),
+                                IconButton(
+                                  icon: const Icon(Icons.delete,
+                                      color: Colors.red),
+                                  onPressed: () => deleteUser(user['id']),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                      ],
+                        );
+                      },
                     ),
-                  ],
-                ),
-                Padding(
-                  padding: EdgeInsets.fromLTRB(16, 10, 16, 16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.max,
-                    children: [
-                      Text(
-                        "List Product",
-                        textAlign: TextAlign.start,
-                        overflow: TextOverflow.clip,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontStyle: FontStyle.normal,
-                          fontSize: 16,
-                          color: Color(0xff000000),
-                        ),
-                      ),
-                      Icon(
-                        Icons.add,
-                        color: Color(0xff212435),
-                        size: 24,
-                      ),
-                    ],
                   ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            flex: 1,
-            child: ListView(
-              scrollDirection: Axis.vertical,
-              padding: EdgeInsets.zero,
-              shrinkWrap: false,
-              physics: ScrollPhysics(),
-              children: [
-                Container(
-                  margin: EdgeInsets.zero,
-                  padding: EdgeInsets.zero,
-                  width: 250,
-                  height: 70,
-                  decoration: BoxDecoration(
-                    color: Color(0xffebe7e7),
-                    shape: BoxShape.rectangle,
-                    borderRadius: BorderRadius.circular(10.0),
-                    border: Border.all(color: Color(0x4d9e9e9e), width: 1),
-                  ),
-                ),
-                Container(
-                  margin: EdgeInsets.zero,
-                  padding: EdgeInsets.zero,
-                  width: 180,
-                  height: 70,
-                  decoration: BoxDecoration(
-                    color: Color(0xffe4dfdf),
-                    shape: BoxShape.rectangle,
-                    borderRadius: BorderRadius.circular(10.0),
-                    border: Border.all(color: Color(0x4d9e9e9e), width: 1),
-                  ),
-                ),
-                Container(
-                  margin: EdgeInsets.zero,
-                  padding: EdgeInsets.zero,
-                  width: 200,
-                  height: 70,
-                  decoration: BoxDecoration(
-                    color: Color(0xffe7e2e2),
-                    shape: BoxShape.rectangle,
-                    borderRadius: BorderRadius.circular(10.0),
-                    border: Border.all(color: Color(0x4d9e9e9e), width: 1),
-                  ),
-                ),
-                Container(
-                  margin: EdgeInsets.zero,
-                  padding: EdgeInsets.zero,
-                  width: 200,
-                  height: 70,
-                  decoration: BoxDecoration(
-                    color: Color(0xffededed),
-                    shape: BoxShape.rectangle,
-                    borderRadius: BorderRadius.circular(10.0),
-                    border: Border.all(color: Color(0x4d9e9e9e), width: 1),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showUserDialog,
+        backgroundColor: const Color(0xff3a57e8),
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
